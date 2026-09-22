@@ -1,8 +1,9 @@
 """
-NEURALFLOW — Enterprise Machine Learning Platform Root Launcher
-================================================================
-Executes backend/app.py while ensuring correct working directory,
-module paths, and environment settings.
+NEURALFLOW — Local Development Launcher
+========================================
+Launches the backend server located in backend/app.py.
+Usage:
+    python launch.py [--port 8000] [--no-browser]
 """
 
 import os

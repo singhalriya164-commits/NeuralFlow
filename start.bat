@@ -55,7 +55,7 @@ goto menu
 echo.
 echo ===============================================================================
 echo [1/4] Starting NeuralFlow Web Server...
-start "" /b python app.py --port 8000 --no-browser
+start "" /b python backend\app.py --port 8000 --no-browser
 timeout /t 2 /nobreak >nul
 
 echo [2/4] Opening Interactive Web Dashboard...
@@ -87,7 +87,7 @@ echo.
 echo [Starting] Launching NeuralFlow Web Dashboard...
 echo [URL] http://127.0.0.1:8000
 echo (Opening dashboard in your default browser...)
-python app.py
+python backend\app.py
 goto end
 
 :run_train

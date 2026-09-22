@@ -18,8 +18,8 @@ if (-not $pythonCmd) {
 }
 
 function Open-Everything {
-    Write-Host "`n[1/4] Starting Web Server (app.py)..." -ForegroundColor Green
-    Start-Process -FilePath "python" -ArgumentList "app.py --port 8000 --no-browser" -WindowStyle Hidden
+    Write-Host "`n[1/4] Starting Web Server (backend/app.py)..." -ForegroundColor Green
+    Start-Process -FilePath "python" -ArgumentList "backend\app.py --port 8000 --no-browser" -WindowStyle Hidden
     Start-Sleep -Seconds 2
 
     Write-Host "[2/4] Opening Web Dashboard in Browser..." -ForegroundColor Green
@@ -55,15 +55,15 @@ if ($Mode -eq "all") {
     exit 0
 }
 elseif ($Mode -eq "web") {
-    python app.py
+    python backend\app.py
     exit 0
 }
 elseif ($Mode -eq "train") {
-    python run_experiment.py
+    python backend\run_experiment.py
     exit 0
 }
 elseif ($Mode -eq "report") {
-    python generate_docx_report.py
+    python backend\reports\generate_report.py
     exit 0
 }
 
@@ -81,9 +81,9 @@ if ([string]::IsNullOrWhiteSpace($choice)) { $choice = "1" }
 
 switch ($choice) {
     "1" { Open-Everything }
-    "2" { python app.py }
-    "3" { python run_experiment.py }
-    "4" { python generate_docx_report.py }
+    "2" { python backend\app.py }
+    "3" { python backend\run_experiment.py }
+    "4" { python backend\reports\generate_report.py }
     "5" { pip install -r requirements.txt }
     "6" { exit 0 }
     Default { Open-Everything }
