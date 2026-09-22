@@ -1,0 +1,21 @@
+{
+  "name": "neuralflow",
+  "version": "1.0.0",
+  "description": "Comparative Analysis of Recurrent Neural Network Architectures (Vanilla RNN, Bi-RNN, LSTM, GRU)",
+  "scripts": {
+    "start": "python app.py",
+    "dev": "python app.py",
+    "train": "python run_experiment.py",
+    "report": "python generate_docx_report.py"
+  },
+  "keywords": [
+    "deep-learning",
+    "rnn",
+    "lstm",
+    "gru",
+    "bidirectional-rnn",
+    "pytorch"
+  ],
+  "author": "",
+  "license": "ISC"
+}

@@ -1,0 +1,13 @@
+{
+  "name": "neuralflow-frontend",
+  "version": "2.4.0",
+  "description": "NeuralFlow Analytics & Inference Web Dashboard",
+  "scripts": {
+    "dev": "npx serve -l 3000 .",
+    "build": "echo 'Static frontend ready'",
+    "start": "npx serve -l 3000 ."
+  },
+  "keywords": ["neuralflow", "deep-learning", "dashboard", "recurrent-neural-networks"],
+  "author": "NeuralFlow Team",
+  "license": "ISC"
+}

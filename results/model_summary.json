@@ -1,0 +1,82 @@
+{
+    "status": "Completed",
+    "last_run": "2026-09-08T18:32:32Z",
+    "dataset_version": "Enterprise Production v2.4 (11 Verified Outcrop Images)",
+    "config": {
+        "seed": 42,
+        "dataset_split": "Dynamic Strict Image-Level Partition (Zero Leakage)",
+        "learning_rate": 0.001,
+        "batch_size": 32,
+        "epochs": 25,
+        "hidden_size": 64,
+        "optimizer": "Adam",
+        "sequence_length": 32,
+        "input_feature_dim": 32
+    },
+    "parameters": {
+        "Vanilla RNN": {
+            "total_parameters": 8451,
+            "recurrent_parameters": 6272,
+            "classifier_parameters": 2179
+        },
+        "Bidirectional RNN": {
+            "total_parameters": 6403,
+            "recurrent_parameters": 4224,
+            "classifier_parameters": 2179
+        },
+        "LSTM": {
+            "total_parameters": 27267,
+            "recurrent_parameters": 25088,
+            "classifier_parameters": 2179
+        },
+        "GRU": {
+            "total_parameters": 20995,
+            "recurrent_parameters": 18816,
+            "classifier_parameters": 2179
+        }
+    },
+    "training_times": {
+        "Vanilla RNN": 14.389892399980454,
+        "Bidirectional RNN": 15.831624299986288,
+        "LSTM": 9.226231000007829,
+        "GRU": 7.7552263000106905
+    },
+    "consolidated_table": [
+        {
+            "model": "Vanilla RNN",
+            "accuracy": 34.583333333333336,
+            "f1_macro": 29.11043191490333,
+            "parameters": 8451,
+            "training_time": 14.389892399980454,
+            "gradient_behavior": "Stable gradient flow (mean ||g||=0.132)",
+            "stability": "High (smooth monotonic convergence)"
+        },
+        {
+            "model": "Bidirectional RNN",
+            "accuracy": 32.708333333333336,
+            "f1_macro": 26.163080185917824,
+            "parameters": 6403,
+            "training_time": 15.831624299986288,
+            "gradient_behavior": "Stable gradient flow (mean ||g||=0.146)",
+            "stability": "High (smooth monotonic convergence)"
+        },
+        {
+            "model": "LSTM",
+            "accuracy": 32.5,
+            "f1_macro": 26.506263780989052,
+            "parameters": 27267,
+            "training_time": 9.226231000007829,
+            "gradient_behavior": "Stable gradient flow (mean ||g||=0.023)",
+            "stability": "High (smooth monotonic convergence)"
+        },
+        {
+            "model": "GRU",
+            "accuracy": 33.958333333333336,
+            "f1_macro": 28.72827244387146,
+            "parameters": 20995,
+            "training_time": 7.7552263000106905,
+            "gradient_behavior": "Stable gradient flow (mean ||g||=0.071)",
+            "stability": "High (smooth monotonic convergence)"
+        }
+    ]
+}

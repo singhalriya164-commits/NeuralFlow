@@ -1,0 +1,30 @@
+{
+    "Vanilla RNN": {
+        "mean_grad_norm": 0.13200663132918947,
+        "max_grad_norm": 0.9326738792049311,
+        "min_grad_norm": 0.018587134303547803,
+        "behavior_label": "Stable gradient flow (mean ||g||=0.132)",
+        "stability_label": "High (smooth monotonic convergence)"
+    },
+    "Bidirectional RNN": {
+        "mean_grad_norm": 0.14599291170178544,
+        "max_grad_norm": 1.2982320754904106,
+        "min_grad_norm": 0.024292960633360314,
+        "behavior_label": "Stable gradient flow (mean ||g||=0.146)",
+        "stability_label": "High (smooth monotonic convergence)"
+    },
+    "LSTM": {
+        "mean_grad_norm": 0.022747587123538325,
+        "max_grad_norm": 0.10805414016559825,
+        "min_grad_norm": 0.004714209715431082,
+        "behavior_label": "Stable gradient flow (mean ||g||=0.023)",
+        "stability_label": "High (smooth monotonic convergence)"
+    },
+    "GRU": {
+        "mean_grad_norm": 0.07063365987148446,
+        "max_grad_norm": 0.4000706097546742,
+        "min_grad_norm": 0.013128341749007622,
+        "behavior_label": "Stable gradient flow (mean ||g||=0.071)",
+        "stability_label": "High (smooth monotonic convergence)"
+    }
+}
