@@ -1,4 +1,3 @@
-# Exclude heavy ML backend, models, datasets, and scripts from Vercel
 backend/
 client/
 models/
@@ -7,6 +6,13 @@ results/
 reports/
 training/
 preprocessing/
+*.pt
+*.docx
+*.png
+*.jpeg
+*.jpg
+*.ps1
+*.bat
 launch.py
 scratch_*.py
 generate_*.py
@@ -16,16 +22,6 @@ check_*.py
 add_*.py
 appendices_*.py
 report_builder_*.py
-*.pt
-*.docx
-*.png
-*.jpeg
-*.jpg
-*.ps1
-*.bat
-requirements.txt
-render.yaml
-Dockerfile
 COLLEGE_REPORT.md
 ENTERPRISE_SYSTEM_REPORT.md
 IEEE_CONFERENCE_PAPER.md
