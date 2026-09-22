@@ -2,16 +2,13 @@
 NEURALFLOW — Unified Vercel Serverless Entrypoint & Local Launcher
 ==================================================================
 Exports 'app', 'application', and 'handler' for the Vercel Python runtime.
-Supports:
-  - WSGI (app, application)
-  - ASGI (app)
-  - BaseHTTPRequestHandler (handler)
-When executed locally via CLI, launches the full PyTorch backend server.
+Captures all exceptions and returns informative tracebacks.
 """
 
 import os
 import sys
 import mimetypes
+import traceback
 import urllib.request
 import urllib.error
 from http.server import BaseHTTPRequestHandler
@@ -36,17 +33,17 @@ def _resolve_static_file(path):
     if not clean or clean == "index.html":
         clean = "index.html"
 
-    # 1. Search root directory
+    # Search current directory
     candidate = os.path.join(BASE_DIR, clean)
     if os.path.isfile(candidate):
         return candidate
 
-    # 2. Search frontend directory
+    # Search frontend directory
     candidate = os.path.join(BASE_DIR, "frontend", clean)
     if os.path.isfile(candidate):
         return candidate
 
-    # 3. SPA fallback to index.html
+    # SPA index fallback
     fallback = os.path.join(BASE_DIR, "index.html")
     if os.path.isfile(fallback):
         return fallback
@@ -79,133 +76,91 @@ def _proxy_api_request(method, path, body=None, headers=None):
 
 
 # ---------------------------------------------------------------------------
-# WSGI Handler
+# Robust WSGI Handler
 # ---------------------------------------------------------------------------
 def _wsgi_handler(environ, start_response):
-    method = environ.get("REQUEST_METHOD", "GET").upper()
-    path = environ.get("PATH_INFO", "/")
+    try:
+        method = environ.get("REQUEST_METHOD", "GET").upper()
+        path = environ.get("PATH_INFO", "/")
 
-    # Proxy API calls directly to Render backend if they fall through to Python
-    if path.startswith("/api/"):
-        body = None
-        try:
-            content_length = int(environ.get("CONTENT_LENGTH", 0) or 0)
-            if content_length > 0:
-                body = environ["wsgi.input"].read(content_length)
-        except Exception:
+        # Reverse proxy to Render for any /api/* route
+        if path.startswith("/api/"):
             body = None
+            try:
+                content_length = int(environ.get("CONTENT_LENGTH", 0) or 0)
+                if content_length > 0:
+                    body = environ["wsgi.input"].read(content_length)
+            except Exception:
+                body = None
 
-        forward_headers = {}
-        for key, value in environ.items():
-            if key.startswith("HTTP_"):
-                header_name = key[5:].replace("_", "-").title()
-                forward_headers[header_name] = value
-            elif key in ("CONTENT_TYPE", "CONTENT_LENGTH"):
-                forward_headers[key.replace("_", "-").title()] = value
+            forward_headers = {}
+            for key, value in environ.items():
+                if key.startswith("HTTP_"):
+                    header_name = key[5:].replace("_", "-").title()
+                    forward_headers[header_name] = value
+                elif key in ("CONTENT_TYPE", "CONTENT_LENGTH"):
+                    forward_headers[key.replace("_", "-").title()] = value
 
-        status_code, resp_headers, resp_data = _proxy_api_request(method, path, body, forward_headers)
-        status_text = f"{status_code} {'OK' if status_code == 200 else 'Response'}"
-        start_response(status_text, resp_headers)
-        return [resp_data]
+            status_code, resp_headers, resp_data = _proxy_api_request(method, path, body, forward_headers)
+            status_text = f"{status_code} {'OK' if status_code == 200 else 'Response'}"
+            start_response(status_text, resp_headers)
+            return [resp_data]
 
-    # Serve static assets
-    file_path = _resolve_static_file(path)
-    if file_path and os.path.isfile(file_path):
-        ext = os.path.splitext(file_path)[1].lower()
-        content_type = MIME_TYPES.get(ext, mimetypes.guess_type(file_path)[0] or "application/octet-stream")
-        with open(file_path, "rb") as f:
-            data = f.read()
-        headers = [
-            ("Content-Type", content_type),
-            ("Content-Length", str(len(data))),
-            ("Cache-Control", "public, max-age=3600")
-        ]
-        start_response("200 OK", headers)
-        return [data]
-
-    start_response("404 Not Found", [("Content-Type", "text/plain; charset=utf-8")])
-    return [b"Not Found"]
-
-
-# ---------------------------------------------------------------------------
-# ASGI Handler
-# ---------------------------------------------------------------------------
-async def _asgi_handler(scope, receive, send):
-    if scope["type"] == "http":
-        path = scope.get("path", "/")
+        # Serve static assets
         file_path = _resolve_static_file(path)
         if file_path and os.path.isfile(file_path):
             ext = os.path.splitext(file_path)[1].lower()
             content_type = MIME_TYPES.get(ext, mimetypes.guess_type(file_path)[0] or "application/octet-stream")
             with open(file_path, "rb") as f:
                 data = f.read()
-            await send({
-                "type": "http.response.start",
-                "status": 200,
-                "headers": [
-                    (b"content-type", content_type.encode()),
-                    (b"content-length", str(len(data)).encode()),
-                    (b"cache-control", b"public, max-age=3600")
-                ]
-            })
-            await send({
-                "type": "http.response.body",
-                "body": data
-            })
-            return
+            headers = [
+                ("Content-Type", content_type),
+                ("Content-Length", str(len(data))),
+                ("Cache-Control", "public, max-age=3600")
+            ]
+            start_response("200 OK", headers)
+            return [data]
 
-        await send({
-            "type": "http.response.start",
-            "status": 404,
-            "headers": [(b"content-type", b"text/plain")]
-        })
-        await send({
-            "type": "http.response.body",
-            "body": b"Not Found"
-        })
+        start_response("404 Not Found", [("Content-Type", "text/plain; charset=utf-8")])
+        return [b"Not Found"]
+    except Exception:
+        err = traceback.format_exc()
+        start_response("500 Internal Server Error", [("Content-Type", "text/plain; charset=utf-8")])
+        return [f"WSGI Handler Error:\n{err}".encode("utf-8")]
 
 
-# ---------------------------------------------------------------------------
-# Universal 'app' callable: supports both WSGI and ASGI automatically
-# ---------------------------------------------------------------------------
-def app(*args, **kwargs):
-    if len(args) == 2 and callable(args[1]):
-        # Standard WSGI: (environ, start_response)
-        return _wsgi_handler(args[0], args[1])
-    elif len(args) == 3 and isinstance(args[0], dict) and "type" in args[0]:
-        # Standard ASGI: (scope, receive, send)
-        return _asgi_handler(args[0], args[1], args[2])
-    # Fallback to WSGI
-    return _wsgi_handler(args[0], args[1])
+# Universal callable
+def app(environ, start_response):
+    return _wsgi_handler(environ, start_response)
 
 
-# Standard WSGI alias expected by Django and WSGI runners
+# WSGI standard alias
 application = app
 
 
 # ---------------------------------------------------------------------------
-# BaseHTTPRequestHandler subclass expected by Vercel Serverless Function runtime
+# BaseHTTPRequestHandler subclass for Vercel Function runtime
 # ---------------------------------------------------------------------------
 class handler(BaseHTTPRequestHandler):
     """Vercel Python Serverless HTTP Request Handler."""
 
     def do_GET(self):
-        path = self.path
-        if path.startswith("/api/"):
-            headers = {k: v for k, v in self.headers.items()}
-            status_code, resp_headers, data = _proxy_api_request("GET", path, None, headers)
-            self.send_response(status_code)
-            for k, v in resp_headers:
-                self.send_header(k, v)
-            self.end_headers()
-            self.wfile.write(data)
-            return
+        try:
+            path = self.path
+            if path.startswith("/api/"):
+                headers = {k: v for k, v in self.headers.items()}
+                status_code, resp_headers, data = _proxy_api_request("GET", path, None, headers)
+                self.send_response(status_code)
+                for k, v in resp_headers:
+                    self.send_header(k, v)
+                self.end_headers()
+                self.wfile.write(data)
+                return
 
-        file_path = _resolve_static_file(path)
-        if file_path and os.path.isfile(file_path):
-            ext = os.path.splitext(file_path)[1].lower()
-            content_type = MIME_TYPES.get(ext, mimetypes.guess_type(file_path)[0] or "application/octet-stream")
-            try:
+            file_path = _resolve_static_file(path)
+            if file_path and os.path.isfile(file_path):
+                ext = os.path.splitext(file_path)[1].lower()
+                content_type = MIME_TYPES.get(ext, mimetypes.guess_type(file_path)[0] or "application/octet-stream")
                 with open(file_path, "rb") as f:
                     data = f.read()
                 self.send_response(200)
@@ -215,29 +170,38 @@ class handler(BaseHTTPRequestHandler):
                 self.end_headers()
                 self.wfile.write(data)
                 return
-            except Exception as e:
-                self.send_response(500)
-                self.end_headers()
-                self.wfile.write(f"Error: {e}".encode())
-                return
 
-        self.send_response(404)
-        self.end_headers()
-        self.wfile.write(b"Not Found")
+            self.send_response(404)
+            self.send_header("Content-Type", "text/plain; charset=utf-8")
+            self.end_headers()
+            self.wfile.write(b"Not Found")
+        except Exception:
+            err = traceback.format_exc()
+            self.send_response(500)
+            self.send_header("Content-Type", "text/plain; charset=utf-8")
+            self.end_headers()
+            self.wfile.write(f"Handler GET Error:\n{err}".encode("utf-8"))
 
     def do_HEAD(self):
         self.do_GET()
 
     def do_POST(self):
-        length = int(self.headers.get("content-length", 0) or 0)
-        body = self.rfile.read(length) if length > 0 else None
-        headers = {k: v for k, v in self.headers.items()}
-        status_code, resp_headers, data = _proxy_api_request("POST", self.path, body, headers)
-        self.send_response(status_code)
-        for k, v in resp_headers:
-            self.send_header(k, v)
-        self.end_headers()
-        self.wfile.write(data)
+        try:
+            length = int(self.headers.get("content-length", 0) or 0)
+            body = self.rfile.read(length) if length > 0 else None
+            headers = {k: v for k, v in self.headers.items()}
+            status_code, resp_headers, data = _proxy_api_request("POST", self.path, body, headers)
+            self.send_response(status_code)
+            for k, v in resp_headers:
+                self.send_header(k, v)
+            self.end_headers()
+            self.wfile.write(data)
+        except Exception:
+            err = traceback.format_exc()
+            self.send_response(500)
+            self.send_header("Content-Type", "text/plain; charset=utf-8")
+            self.end_headers()
+            self.wfile.write(f"Handler POST Error:\n{err}".encode("utf-8"))
 
     def do_OPTIONS(self):
         self.send_response(200)
