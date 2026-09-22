@@ -1,6 +1,4 @@
-# Ignore backend, models, and scripts for Vercel frontend builds
-app.py
-launch.py
+# Exclude heavy ML backend, models, datasets, and scripts from Vercel
 backend/
 client/
 models/
@@ -9,8 +7,16 @@ results/
 reports/
 training/
 preprocessing/
+launch.py
+scratch_*.py
+generate_*.py
+expand_*.py
+inspect_*.py
+check_*.py
+add_*.py
+appendices_*.py
+report_builder_*.py
 *.pt
-*.py
 *.docx
 *.png
 *.jpeg
