@@ -6,6 +6,7 @@ results/
 reports/
 training/
 preprocessing/
+report_assets/
 *.pt
 *.docx
 *.png
@@ -28,3 +29,10 @@ IEEE_CONFERENCE_PAPER.md
 OPERATIONS_RUNBOOK.md
 VIVA_PREPARATION.md
 template_structure.txt
+train.py
+evaluate.py
+models.py
+dataset.py
+run_experiment.py
+dynamic_engine.py
+visualize.py
