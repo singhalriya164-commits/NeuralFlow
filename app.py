@@ -2,6 +2,10 @@
 NEURALFLOW — Unified Vercel Serverless Entrypoint & Local Launcher
 ==================================================================
 Exports 'app', 'application', and 'handler' for the Vercel Python runtime.
+Supports:
+  - WSGI (app, application)
+  - ASGI (app)
+  - BaseHTTPRequestHandler (handler)
 When executed locally via CLI, launches the full PyTorch backend server.
 """
 
@@ -32,16 +36,17 @@ def _resolve_static_file(path):
     if not clean or clean == "index.html":
         clean = "index.html"
 
-    # Search root then frontend directory
+    # 1. Search root directory
     candidate = os.path.join(BASE_DIR, clean)
     if os.path.isfile(candidate):
         return candidate
 
+    # 2. Search frontend directory
     candidate = os.path.join(BASE_DIR, "frontend", clean)
     if os.path.isfile(candidate):
         return candidate
 
-    # SPA index fallback for html navigation
+    # 3. SPA fallback to index.html
     fallback = os.path.join(BASE_DIR, "index.html")
     if os.path.isfile(fallback):
         return fallback
@@ -74,13 +79,13 @@ def _proxy_api_request(method, path, body=None, headers=None):
 
 
 # ---------------------------------------------------------------------------
-# WSGI Entrypoint: callable as app(environ, start_response)
+# WSGI Handler
 # ---------------------------------------------------------------------------
-def app(environ, start_response):
+def _wsgi_handler(environ, start_response):
     method = environ.get("REQUEST_METHOD", "GET").upper()
     path = environ.get("PATH_INFO", "/")
 
-    # Proxy API calls directly to Render backend if they reach the function
+    # Proxy API calls directly to Render backend if they fall through to Python
     if path.startswith("/api/"):
         body = None
         try:
@@ -122,12 +127,64 @@ def app(environ, start_response):
     return [b"Not Found"]
 
 
-# Standard WSGI alias
+# ---------------------------------------------------------------------------
+# ASGI Handler
+# ---------------------------------------------------------------------------
+async def _asgi_handler(scope, receive, send):
+    if scope["type"] == "http":
+        path = scope.get("path", "/")
+        file_path = _resolve_static_file(path)
+        if file_path and os.path.isfile(file_path):
+            ext = os.path.splitext(file_path)[1].lower()
+            content_type = MIME_TYPES.get(ext, mimetypes.guess_type(file_path)[0] or "application/octet-stream")
+            with open(file_path, "rb") as f:
+                data = f.read()
+            await send({
+                "type": "http.response.start",
+                "status": 200,
+                "headers": [
+                    (b"content-type", content_type.encode()),
+                    (b"content-length", str(len(data)).encode()),
+                    (b"cache-control", b"public, max-age=3600")
+                ]
+            })
+            await send({
+                "type": "http.response.body",
+                "body": data
+            })
+            return
+
+        await send({
+            "type": "http.response.start",
+            "status": 404,
+            "headers": [(b"content-type", b"text/plain")]
+        })
+        await send({
+            "type": "http.response.body",
+            "body": b"Not Found"
+        })
+
+
+# ---------------------------------------------------------------------------
+# Universal 'app' callable: supports both WSGI and ASGI automatically
+# ---------------------------------------------------------------------------
+def app(*args, **kwargs):
+    if len(args) == 2 and callable(args[1]):
+        # Standard WSGI: (environ, start_response)
+        return _wsgi_handler(args[0], args[1])
+    elif len(args) == 3 and isinstance(args[0], dict) and "type" in args[0]:
+        # Standard ASGI: (scope, receive, send)
+        return _asgi_handler(args[0], args[1], args[2])
+    # Fallback to WSGI
+    return _wsgi_handler(args[0], args[1])
+
+
+# Standard WSGI alias expected by Django and WSGI runners
 application = app
 
 
 # ---------------------------------------------------------------------------
-# BaseHTTPRequestHandler Entrypoint: subclass named 'handler'
+# BaseHTTPRequestHandler subclass expected by Vercel Serverless Function runtime
 # ---------------------------------------------------------------------------
 class handler(BaseHTTPRequestHandler):
     """Vercel Python Serverless HTTP Request Handler."""
